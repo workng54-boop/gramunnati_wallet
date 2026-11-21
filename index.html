@@ -315,8 +315,7 @@
       </button>
     </div>
   </div>
-
-  <script>
+<script>
     // ==================== BENGALI NUMBER FORMATTER ====================
     const bnDigits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
     function toBnNum(num) {
@@ -329,39 +328,11 @@
       return '₹' + toBnNum(formatted);
     }
 
-    // ==================== APPSHEET API CONFIG ====================
-    // এখানে আপনার AppSheet App Id ও Application Access Key যুক্ত করা হয়েছে
-    const APPSHEET_CONFIG = {
-      appId: 'f2f39551-195c-403d-8531-14858034d357',
-      accessKey: 'V2-Y08vX-xdNtF-zTRcy-VXzbc-mMwEs-0J1dM-Mg3ro-AEXCn',
-      membersTable: 'Members',
-      transactionsTable: 'Transactions'
-    };
+    // ==================== GOOGLE APPS SCRIPT (GAS) CONFIG ====================
+    // Google Sheet > Extensions > Apps Script থেকে Deploy করে পাওয়া Web App URL এখানে বসান
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec';
 
-    function getAppSheetUrl(tableName) {
-      return `https://api.appsheet.com/api/v2/apps/${APPSHEET_CONFIG.appId}/tables/${encodeURIComponent(tableName)}/Action`;
-    }
-
-    async function callAppSheetApi(tableName, action, rows = []) {
-      const res = await fetch(getAppSheetUrl(tableName), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'ApplicationAccessKey': APPSHEET_CONFIG.accessKey
-        },
-        body: JSON.stringify({
-          Action: action,
-          Properties: {},
-          Rows: rows
-        })
-      });
-      if (!res.ok) {
-        throw new Error(`AppSheet ${action} Error (${res.status})`);
-      }
-      return await res.json();
-    }
-
-    // ==================== LOCAL FALLBACK DEMO STORE ====================
+    // ==================== LOCAL DEMO / FALLBACK DATA ====================
     const DEFAULT_DB = {
       members: {
         GUUS001: {
@@ -395,24 +366,37 @@
       ]
     };
 
-    let appState = JSON.parse(localStorage.getItem('gram_unnati_sheet_demo')) || DEFAULT_DB;
+    let appState = JSON.parse(localStorage.getItem('gram_unnati_gas_db')) || DEFAULT_DB;
     let activeMemberId = null;
 
     function saveState() {
-      localStorage.setItem('gram_unnati_sheet_demo', JSON.stringify(appState));
+      localStorage.setItem('gram_unnati_gas_db', JSON.stringify(appState));
     }
 
-    // AppSheet থেকে Members ও Transactions লোড করার ফাংশন
-    async function syncFromAppSheet() {
-      try {
-        const [membersRows, txRows] = await Promise.all([
-          callAppSheetApi(APPSHEET_CONFIG.membersTable, 'Find', []),
-          callAppSheetApi(APPSHEET_CONFIG.transactionsTable, 'Find', [])
-        ]);
+    function showToast(msg, isError = false) {
+      const box = document.getElementById('toast-box');
+      if (!box) return;
+      const el = document.createElement('div');
+      el.className = `${isError ? 'bg-red-600' : 'bg-[#063B27]'} text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-lg text-center transition-all`;
+      el.textContent = msg;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 3000);
+    }
 
-        if (Array.isArray(membersRows) && membersRows.length > 0) {
+    // ==================== GAS SYNC (READ FROM GOOGLE SHEET) ====================
+    async function syncFromGoogleSheet() {
+      if (!GAS_WEB_APP_URL || GAS_WEB_APP_URL.includes('YOUR_SCRIPT_ID_HERE')) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`${GAS_WEB_APP_URL}?action=getAll`);
+        if (!res.ok) throw new Error('Network response was not ok');
+        const data = await res.json();
+
+        if (Array.isArray(data.members) && data.members.length > 0) {
           const mappedMembers = {};
-          membersRows.forEach(row => {
+          data.members.forEach(row => {
             const mId = String(row.Member_ID || '').trim().toUpperCase();
             if (!mId) return;
             const creditLimit = Number(row.Credit_Limit) || 500;
@@ -440,8 +424,8 @@
           }
         }
 
-        if (Array.isArray(txRows)) {
-          appState.transactions = txRows.map((t, idx) => {
+        if (Array.isArray(data.transactions)) {
+          appState.transactions = data.transactions.map((t, idx) => {
             const rawType = String(t.Type || '').toLowerCase();
             const isDeposit = rawType === 'deposit' || Number(t.Amount) > 0;
             return {
@@ -459,20 +443,11 @@
         saveState();
         if (activeMemberId) renderMemberWallet();
         if (!document.getElementById('screen-admin').classList.contains('hidden')) renderAdminPanel();
-        showToast('AppSheet থেকে ডাটা সিঙ্ক হয়েছে!');
+        showToast('Google Sheet থেকে ডাটা সিঙ্ক হয়েছে!');
       } catch (err) {
-        console.warn('AppSheet sync fallback:', err.message);
-        showToast('AppSheet সরাসরি কানেক্ট হয়নি, লোকাল ডাটা দেখানো হচ্ছে', true);
+        console.warn('GAS sync error:', err);
+        showToast('Google Sheet সিঙ্ক করা যায়নি, লোকাল ডাটা দেখানো হচ্ছে', true);
       }
-    }
-
-    function showToast(msg, isError = false) {
-      const box = document.getElementById('toast-box');
-      const el = document.createElement('div');
-      el.className = `${isError ? 'bg-red-600' : 'bg-[#063B27]'} text-white text-xs font-semibold px-4 py-3 rounded-xl shadow-lg text-center transition-all`;
-      el.textContent = msg;
-      box.appendChild(el);
-      setTimeout(() => el.remove(), 3000);
     }
 
     // ==================== LOGIN & NAVIGATION ====================
@@ -515,7 +490,7 @@
       document.getElementById('back-to-login-btn').classList.remove('hidden');
       document.getElementById('header-badge').textContent = 'Member View';
       renderMemberWallet();
-      lucide.createIcons();
+      if (window.lucide) lucide.createIcons();
     }
 
     function openAdminScreen() {
@@ -526,7 +501,7 @@
       document.getElementById('back-to-login-btn').classList.remove('hidden');
       document.getElementById('header-badge').textContent = 'Admin Mode';
       renderAdminPanel();
-      lucide.createIcons();
+      if (window.lucide) lucide.createIcons();
     }
 
     function logoutToLogin() {
@@ -536,10 +511,10 @@
       document.getElementById('screen-login').classList.remove('hidden');
       document.getElementById('back-to-login-btn').classList.add('hidden');
       document.getElementById('header-badge').textContent = 'Google Sheet Ready';
-      lucide.createIcons();
+      if (window.lucide) lucide.createIcons();
     }
 
-    // ==================== RENDER MEMBER WALLET (EXACT MOCKUP UI) ====================
+    // ==================== RENDER MEMBER WALLET ====================
     function renderMemberWallet() {
       const m = appState.members[activeMemberId];
       if (!m) return;
@@ -663,20 +638,28 @@
       appState.transactions.unshift(newTx);
       saveState();
 
-      // AppSheet Transactions টেবিলে নতুন সারি যোগ করার চেষ্টা
-      try {
-        await callAppSheetApi(APPSHEET_CONFIG.transactionsTable, 'Add', [{
-          Txn_ID: newTx.Tx_ID,
-          Date: newTx.Date,
-          Member_ID: newTx.Member_ID,
-          Type: type === 'deposit' ? 'Deposit' : 'Purchase',
-          Description: note || newTx.Title,
-          Weight_Kg: 0,
-          Rate_Per_Kg: 0,
-          Amount: type === 'deposit' ? amount : -amount
-        }]);
-      } catch (err) {
-        console.warn('AppSheet Add fallback:', err.message);
+      // Google Sheet-এ নতুন লেনদেন পাঠানোর চেষ্টা (GAS)
+      if (GAS_WEB_APP_URL && !GAS_WEB_APP_URL.includes('YOUR_SCRIPT_ID_HERE')) {
+        try {
+          await fetch(GAS_WEB_APP_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({
+              action: 'addTransaction',
+              Txn_ID: newTx.Tx_ID,
+              Date: newTx.Date,
+              Member_ID: newTx.Member_ID,
+              Type: type === 'deposit' ? 'Deposit' : 'Purchase',
+              Description: note || newTx.Title,
+              Weight_Kg: 0,
+              Rate_Per_Kg: 0,
+              Amount: type === 'deposit' ? amount : -amount
+            })
+          });
+        } catch (err) {
+          console.warn('GAS write error:', err);
+        }
       }
 
       document.getElementById('admin-tx-note').value = '';
@@ -687,6 +670,7 @@
 
     function toggleSchemaModal(show) {
       const modal = document.getElementById('schema-modal');
+      if (!modal) return;
       if (show) {
         modal.classList.remove('hidden');
         modal.classList.add('flex');
@@ -694,13 +678,13 @@
         modal.classList.add('hidden');
         modal.classList.remove('flex');
       }
-      lucide.createIcons();
+      if (window.lucide) lucide.createIcons();
     }
 
     window.addEventListener('load', () => {
-      lucide.createIcons();
-      syncFromAppSheet();
+      if (window.lucide) lucide.createIcons();
+      syncFromGoogleSheet();
     });
   </script>
-</body>
+  </body>
 </html>
