@@ -677,6 +677,41 @@
       if (window.lucide) lucide.createIcons();
       syncFromGoogleSheet();
     });
+      const ADMIN_ACCESS_PIN = 'admin123'; // এখানে আপনার পছন্দমতো গোপন পাসওয়ার্ড দিন
+
+    function guardAdminAccess() {
+      const enteredPin = prompt('অ্যাডমিন / দোকান প্যানেলে ঢুকতে পাসওয়ার্ড দিন:');
+      if (enteredPin === null) return false;
+      if (enteredPin.trim() === ADMIN_ACCESS_PIN) {
+        sessionStorage.setItem('gmt_admin_auth', 'yes');
+        return true;
+      }
+      alert('ভুল পাসওয়ার্ড! অ্যাডমিন প্যানেলে প্রবেশ করা যাবে না।');
+      return false;
+    }
+
+    // এক ক্লিকে অ্যাডমিন বাটন চাপলে আগে পাসওয়ার্ড চাইবে
+    const originalQuickLogin = window.quickLogin;
+    if (typeof originalQuickLogin === 'function') {
+      window.quickLogin = function(role) {
+        if (role === 'ADMIN') {
+          if (!guardAdminAccess()) return;
+        }
+        return originalQuickLogin.apply(this, arguments);
+      };
+    }
+
+    // অন্য কোনোভাবে বা ফর্ম থেকে অ্যাডমিন স্ক্রিন খুলতে চাইলেও পাসওয়ার্ড চেক করবে
+    const originalOpenAdminScreen = window.openAdminScreen;
+    if (typeof originalOpenAdminScreen === 'function') {
+      window.openAdminScreen = function() {
+        if (sessionStorage.getItem('gmt_admin_auth') !== 'yes') {
+          if (!guardAdminAccess()) return;
+        }
+        return originalOpenAdminScreen.apply(this, arguments);
+      };
+    }
+  
   </script>
   </body>
 </html>
