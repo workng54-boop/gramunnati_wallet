@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>গ্রাম উন্নতি - অ্যাডমিন ও দোকান প্যানেল</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-100 min-h-screen text-slate-800">
+
+  <!-- অ্যাডমিন পাসওয়ার্ড লক স্ক্রিন -->
+  <div id="lock-screen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-white rounded-2xl shadow-md border border-slate-200 p-6 space-y-4">
+      <div class="bg-[#07422C] text-white rounded-xl p-4">
+        <p class="text-[11px] uppercase tracking-wider opacity-80">Gram Unnati • Admin Access</p>
+        <h1 class="text-lg font-bold mt-0.5">অ্যাডমিন / দোকান লগইন</h1>
+        <p class="text-xs text-emerald-100 mt-1">হিসাব এন্ট্রি করতে অ্যাডমিন পাসওয়ার্ড দিন।</p>
+      </div>
+
+      <form id="pin-form" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">অ্যাডমিন পাসওয়ার্ড</label>
+          <input
+            type="password"
+            id="admin-pin-input"
+            required
+            placeholder="পাসওয়ার্ড লিখুন"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#07422C]"
+          />
+        </div>
+        <p id="pin-error" class="text-xs text-red-600 hidden">ভুল পাসওয়ার্ড! আবার চেষ্টা করুন।</p>
+        <button
+          type="submit"
+          id="btn-unlock"
+          class="w-full py-2.5 rounded-xl bg-[#07422C] hover:bg-[#053322] text-white font-semibold text-sm transition"
+        >
+          প্যানেল খুলুন
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- মূল অ্যাডমিন এন্ট্রি ড্যাশবোর্ড -->
+  <div id="admin-panel" class="hidden max-w-xl mx-auto p-4 pb-12 space-y-4">
+    <header class="bg-[#07422C] text-white rounded-2xl p-4 shadow flex items-center justify-between">
+      <div>
+        <p class="text-[11px] uppercase tracking-wider text-emerald-200">Gram Unnati • হিসাব এন্ট্রি</p>
+        <h1 class="text-lg font-bold">অ্যাডমিন / দোকান প্যানেল</h1>
+      </div>
+      <div class="flex items-center gap-2">
+        <button
+          type="button"
+          id="btn-sync"
+          class="px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-xs font-medium"
+        >
+          সিঙ্ক করুন
+        </button>
+        <button
+          type="button"
+          id="btn-logout"
+          class="px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-xs font-medium"
+        >
+          লক
+        </button>
+      </div>
+    </header>
+
+    <div id="status-banner" class="hidden rounded-xl px-4 py-3 text-xs font-medium"></div>
+
+    <div id="member-preview" class="hidden bg-white rounded-2xl border border-slate-200 p-4 shadow-sm">
+      <div class="flex items-center justify-between">
+        <div>
+          <p class="text-xs text-slate-500">সদস্যের নাম</p>
+          <p id="preview-name" class="font-bold text-slate-800">—</p>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-slate-500">Available Credit</p>
+          <p id="preview-credit" class="font-bold text-emerald-700">₹0</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-100 text-xs">
+        <div>Total Deposit: <strong id="preview-deposit">₹0</strong></div>
+        <div>Total Purchase: <strong id="preview-purchase">₹0</strong></div>
+      </div>
+    </div>
+
+    <form id="txn-form" class="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+      <h2 class="text-base font-bold text-slate-800 border-b border-slate-100 pb-2">নতুন হিসাব এন্ট্রি</h2>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">Member ID *</label>
+          <input
+            type="text"
+            id="member-id"
+            list="member-id-list"
+            required
+            placeholder="যেমন: GUUS005"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 uppercase focus:outline-none focus:border-[#07422C]"
+          />
+          <datalist id="member-id-list"></datalist>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">তারিখ *</label>
+          <input
+            type="date"
+            id="txn-date"
+            required
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#07422C]"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">লেনদেনের ধরন (Type) *</label>
+          <select
+            id="txn-type"
+            required
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-[#07422C]"
+          >
+            <option value="DEPOSIT">সবজি জমা (DEPOSIT)</option>
+            <option value="PURCHASE">গ্রোসারি কেনাকাটা (PURCHASE)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">বিবরণ (Description) *</label>
+          <input
+            type="text"
+            id="txn-desc"
+            required
+            placeholder="যেমন: শসা / চাল ও তেল"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#07422C]"
+          />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">ওজন (Kg)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            id="txn-weight"
+            placeholder="0"
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#07422C]"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">দর / Kg (₹)</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0"
+            id="txn-rate"
+            placeholder="0"
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:border-[#07422C]"
+          />
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-600 mb-1">মোট টাকা (₹) *</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            id="txn-amount"
+            required
+            placeholder="0"
+            class="w-full px-3 py-2.5 rounded-xl border border-slate-300 font-semibold focus:outline-none focus:border-[#07422C]"
+          />
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        id="btn-submit"
+        class="w-full py-3 rounded-xl bg-[#07422C] hover:bg-[#053322] text-white font-bold text-sm transition"
+      >
+        Google Sheet-এ এন্ট্রি সেভ করুন
+      </button>
+    </form>
+  </div>
+
+  <script>
+    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzru2jLpvyDa4oMcq6RVqzpDX17FTClMG2QAw6JQ8CZL0xm1zaf27MbbbRUUREC3VZJ/exec'; // আপনার Apps Script Web App URL বসান
+    let membersCache = [];
+
+    document.getElementById('txn-date').valueAsDate = new Date();
+
+    function showStatus(message, isError = false) {
+      const banner = document.getElementById('status-banner');
+      banner.textContent = message;
+      banner.className = `rounded-xl px-4 py-3 text-xs font-medium block ${
+        isError
+          ? 'bg-red-50 text-red-700 border border-red-200'
+          : 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+      }`;
+    }
+
+    async function verifyAdminPinFromSheet(pin) {
+      const url = `${GAS_WEB_APP_URL}?action=verifyAdmin&pin=${encodeURIComponent(pin)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return Boolean(data && data.ok);
+    }
+
+    function unlockPanel() {
+      sessionStorage.setItem('gmt_admin_unlocked', 'true');
+      document.getElementById('lock-screen').classList.add('hidden');
+      document.getElementById('admin-panel').classList.remove('hidden');
+      syncMembers();
+    }
+
+    document.getElementById('pin-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pin = document.getElementById('admin-pin-input').value.trim();
+      const btn = document.getElementById('btn-unlock');
+      const errEl = document.getElementById('pin-error');
+
+      errEl.classList.add('hidden');
+      btn.disabled = true;
+      btn.textContent = 'যাচাই হচ্ছে...';
+
+      try {
+        const ok = await verifyAdminPinFromSheet(pin);
+        if (ok) {
+          unlockPanel();
+        } else {
+          errEl.classList.remove('hidden');
+        }
+      } catch (err) {
+        errEl.textContent = 'সার্ভারের সাথে সংযোগে সমস্যা হয়েছে।';
+        errEl.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'প্যানেল খুলুন';
+      }
+    });
+
+    document.getElementById('btn-logout').addEventListener('click', () => {
+      sessionStorage.removeItem('gmt_admin_unlocked');
+      location.reload();
+    });
+
+    function autoCalcAmount() {
+      const w = parseFloat(document.getElementById('txn-weight').value);
+      const r = parseFloat(document.getElementById('txn-rate').value);
+      if (!isNaN(w) && !isNaN(r) && w > 0 && r > 0) {
+        document.getElementById('txn-amount').value = (w * r).toFixed(2).replace(/\.00$/, '');
+      }
+    }
+    document.getElementById('txn-weight').addEventListener('input', autoCalcAmount);
+    document.getElementById('txn-rate').addEventListener('input', autoCalcAmount);
+
+    function updateMemberPreview(memberId) {
+      const cleanId = (memberId || '').trim().toUpperCase();
+      const found = membersCache.find(m => String(m.Member_ID || '').trim().toUpperCase() === cleanId);
+      const previewBox = document.getElementById('member-preview');
+
+      if (!found) {
+        previewBox.classList.add('hidden');
+        return;
+      }
+
+      previewBox.classList.remove('hidden');
+      document.getElementById('preview-name').textContent = found.Name || '—';
+      document.getElementById('preview-credit').textContent = `₹${found.Available_Credit ?? 0}`;
+      document.getElementById('preview-deposit').textContent = `₹${found.Total_Deposit ?? 0}`;
+      document.getElementById('preview-purchase').textContent = `₹${found.Total_Purchase ?? 0}`;
+    }
+
+    document.getElementById('member-id').addEventListener('input', (e) => {
+      updateMemberPreview(e.target.value);
+    });
+
+    async function syncMembers() {
+      try {
+        showStatus('Google Sheet থেকে সদস্যদের তথ্য আনা হচ্ছে...');
+        const res = await fetch(`${GAS_WEB_APP_URL}?action=getAll`);
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : (data.members || data.data || []);
+
+        if (Array.isArray(list) && list.length > 0) {
+          membersCache = list;
+          const datalist = document.getElementById('member-id-list');
+          datalist.innerHTML = '';
+          list.forEach(m => {
+            if (m.Member_ID) {
+              const opt = document.createElement('option');
+              opt.value = m.Member_ID;
+              opt.label = m.Name || '';
+              datalist.appendChild(opt);
+            }
+          });
+          updateMemberPreview(document.getElementById('member-id').value);
+          showStatus('সদস্যদের তথ্য সিঙ্ক হয়েছে।');
+        }
+      } catch (err) {
+        showStatus('ডাটা সিঙ্ক করতে সমস্যা হয়েছে: ' + err.message, true);
+      }
+    }
+
+    document.getElementById('btn-sync').addEventListener('click', syncMembers);
+
+    document.getElementById('txn-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const payload = {
+        action: 'addTransaction',
+        Txn_ID: 'TXN' + Date.now(),
+        Date: document.getElementById('txn-date').value,
+        Member_ID: document.getElementById('member-id').value.trim().toUpperCase(),
+        Type: document.getElementById('txn-type').value,
+        Description: document.getElementById('txn-desc').value.trim(),
+        Weight_Kg: Number(document.getElementById('txn-weight').value || 0),
+        Rate_Per_Kg: Number(document.getElementById('txn-rate').value || 0),
+        Amount: Number(document.getElementById('txn-amount').value || 0)
+      };
+
+      const btn = document.getElementById('btn-submit');
+      btn.disabled = true;
+      btn.textContent = 'সেভ হচ্ছে...';
+
+      try {
+        const res = await fetch(GAS_WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(payload)
+        });
+        const result = await res.json();
+        if (result && result.status === 'error') {
+          throw new Error(result.message || 'এন্ট্রি সেভ হয়নি');
+        }
+
+        showStatus(`${payload.Member_ID}-এর জন্য ${payload.Type} (₹${payload.Amount}) সফলভাবে সেভ হয়েছে!`);
+        document.getElementById('txn-desc').value = '';
+        document.getElementById('txn-weight').value = '';
+        document.getElementById('txn-rate').value = '';
+        document.getElementById('txn-amount').value = '';
+
+        setTimeout(syncMembers, 1000);
+      } catch (err) {
+        showStatus('এন্ট্রি পাঠাতে সমস্যা হয়েছে: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Google Sheet-এ এন্ট্রি সেভ করুন';
+      }
+    });
+
+    window.addEventListener('load', () => {
+      if (sessionStorage.getItem('gmt_admin_unlocked') === 'true') {
+        unlockPanel();
+      }
+    });
+  </script>
+</body>
+</html>
